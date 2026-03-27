@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(uuid())
+  name         String
+  email        String         @unique
+  phone        String?
+  passwordHash String
+  createdAt    DateTime       @default(now())
+
+  merchantKYCs MerchantKYC[]
+  kycTokens   KYCRequestToken[]
+}
+
+model Merchant {
+  id           String         @id @default(uuid())
+  name         String
+  slug         String         @unique
+  email        String         @unique
+  passwordHash String
+  createdAt    DateTime       @default(now())
+
+  kycs    MerchantKYC[]
+  tokens  KYCRequestToken[]
+}
+
+model MerchantKYC {
+  id          String   @id @default(uuid())
+  merchantId  String
+  userId      String
+  status      KYCStatus @default(PENDING)
+  kycData     Json
+  idDocuments Json
+  passportPhotoUrl String?
+  reviewedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([userId])
+}
+
+enum KYCStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model KYCRequestToken {
+  id         String    @id @default(uuid())
+  merchantId String
+  userId     String?
+  token      String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  merchant Merchant? @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([token])
+}

@@ -1,0 +1,25 @@
+{
+  "name": "kyc-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "build:shared": "npm run build --workspace=@kyc/shared",
+    "build:server": "npm run build --workspace=@kyc/server",
+    "build:client": "npm run build --workspace=@kyc/client",
+    "dev": "turbo run dev",
+    "dev:backend": "npm run dev --workspace=@kyc/server",
+    "dev:web": "npm run dev --workspace=@kyc/client",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "packageManager": "npm@10.0.0",
+  "engines": {
+    "node": ">=18"
+  }
+}
