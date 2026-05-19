@@ -4,6 +4,10 @@ node_modules/
 .pnp.js
 .turbo/
 
+.env.*
+.env
+.env*
+
 # Build outputs
 dist/
 build/
