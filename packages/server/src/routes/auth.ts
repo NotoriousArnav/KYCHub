@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { JWTPayload } from '../types/index.js';
+import { sendWelcomeEmail } from '../services/email.js';
 
 export const authRouter = Router();
 
@@ -58,6 +59,9 @@ authRouter.post('/register', async (req, res: Response) => {
     );
 
     res.status(201).json({ merchant, token });
+
+    // Send welcome email asynchronously
+    sendWelcomeEmail(merchant.email, merchant.name).catch((err) => console.error('Failed to send welcome email:', err));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });

@@ -7,6 +7,7 @@ import { prisma } from '../lib/prisma.js';
 import { authenticateMerchant } from '../middleware/auth.js';
 import { AuthRequest } from '../types/index.js';
 import { uploadFile } from '../services/s3.js';
+import { sendKYCSubmittedNotification, sendKYCApprovedNotification, sendKYCRejectedNotification } from '../services/email.js';
 
 export const kycRouter = Router();
 
@@ -155,6 +156,14 @@ kycRouter.post('/submit', async (req, res: Response) => {
 
     const kycToken = await prisma.kYCRequestToken.findUnique({
       where: { token: data.token },
+      include: {
+        merchant: {
+          select: { id: true, name: true, email: true, slug: true }
+        },
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      }
     });
 
     if (!kycToken) {
@@ -230,6 +239,20 @@ kycRouter.post('/submit', async (req, res: Response) => {
       where: { id: kycToken.id },
       data: { usedAt: new Date() },
     });
+
+    // Notify merchant about new submission (fire-and-forget)
+    try {
+      if (kycToken.merchant?.email) {
+        sendKYCSubmittedNotification(
+          kycToken.merchant.email,
+          kycToken.merchant.name,
+          data.kycData.name,
+          data.kycData.email
+        ).catch((err) => console.error('Failed to send KYC submitted email:', err));
+      }
+    } catch (err) {
+      console.error('Failed to queue KYC submitted email:', err);
+    }
 
     res.status(201).json({
       success: true,
@@ -359,6 +382,20 @@ kycRouter.patch('/merchant/:id/status', authenticateMerchant, async (req: AuthRe
         },
       },
     });
+
+    // Notify user about status change (fire-and-forget)
+    try {
+      const merchant = await prisma.merchant.findUnique({ where: { id: merchantId }, select: { name: true } });
+      const merchantName = merchant?.name || 'Merchant';
+      if (data.status === 'APPROVED') {
+        sendKYCApprovedNotification(kyc.user.email, kyc.user.name, merchantName).catch((err) => console.error('Failed to send approval email:', err));
+      } else if (data.status === 'REJECTED') {
+        // Note: no rejection reason in API; sending generic message
+        sendKYCRejectedNotification(kyc.user.email, kyc.user.name, merchantName, 'Submission rejected').catch((err) => console.error('Failed to send rejection email:', err));
+      }
+    } catch (err) {
+      console.error('Failed to queue status email:', err);
+    }
 
     res.json({ kyc });
   } catch (error) {

@@ -42,3 +42,6 @@ coverage/
 
 # Misc
 *.tgz
+
+# Ignore compiled server service builds
+/packages/server/src/services/*.js
